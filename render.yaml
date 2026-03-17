@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: hyerin-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SPREADSHEET_ID
+        sync: false
+      - key: GOOGLE_CREDENTIALS_JSON
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
