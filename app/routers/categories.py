@@ -1,54 +1,52 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from app.models import CategoryItem
-from app.services import sheets
-from app.config import settings
+from app.services import db
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
-SHEET = settings.CATEGORIES_SHEET
-HEADERS = ["name", "type"]
-
 DEFAULT_CATEGORIES = [
-    ["급여", "income"],
-    ["부업", "income"],
-    ["용돈", "income"],
-    ["기타수입", "income"],
-    ["식비", "expense"],
-    ["교통비", "expense"],
-    ["주거비", "expense"],
-    ["의류", "expense"],
-    ["의료비", "expense"],
-    ["문화/여가", "expense"],
-    ["교육", "expense"],
-    ["통신비", "expense"],
-    ["기타지출", "expense"],
+    {"name": "급여",   "type": "income"},
+    {"name": "부업",   "type": "income"},
+    {"name": "용돈",   "type": "income"},
+    {"name": "기타수입", "type": "income"},
+    {"name": "식비",   "type": "expense"},
+    {"name": "교통비", "type": "expense"},
+    {"name": "주거비", "type": "expense"},
+    {"name": "의류",   "type": "expense"},
+    {"name": "의료비", "type": "expense"},
+    {"name": "문화/여가", "type": "expense"},
+    {"name": "교육",   "type": "expense"},
+    {"name": "통신비", "type": "expense"},
+    {"name": "기타지출", "type": "expense"},
 ]
 
 
 @router.get("", response_model=list[CategoryItem])
 def list_categories():
-    rows = sheets.get_all_rows(SHEET)
+    rows = db.get_all_rows("categories")
     if not rows:
         for cat in DEFAULT_CATEGORIES:
-            sheets.append_row(SHEET, cat)
-        return [CategoryItem(name=c[0], type=c[1]) for c in DEFAULT_CATEGORIES]
-    return [CategoryItem(name=r.get("name", ""), type=r.get("type", "")) for r in rows]
+            db.insert_row("categories", cat)
+        return [CategoryItem(**c) for c in DEFAULT_CATEGORIES]
+    return [CategoryItem(name=r["name"], type=r["type"]) for r in rows]
 
 
 @router.post("", response_model=CategoryItem, status_code=201)
 def create_category(body: CategoryItem):
-    rows = sheets.get_all_rows(SHEET)
-    if any(r.get("name") == body.name and r.get("type") == body.type for r in rows):
+    rows = db.get_all_rows("categories")
+    if any(r["name"] == body.name and r["type"] == body.type for r in rows):
         raise HTTPException(status_code=409, detail="이미 존재하는 카테고리입니다.")
-    sheets.append_row(SHEET, [body.name, body.type])
+    db.insert_row("categories", {"name": body.name, "type": body.type})
     return body
 
 
 @router.delete("/{name}", status_code=204)
-def delete_category(name: str, type: str = None):
-    rows = sheets.get_all_rows(SHEET)
-    for i, r in enumerate(rows):
-        if r.get("name") == name and (type is None or r.get("type") == type):
-            sheets.delete_row(SHEET, i + 2)  # +2: header row + 0-index offset
-            return
-    raise HTTPException(status_code=404, detail="카테고리를 찾을 수 없습니다.")
+def delete_category(name: str, type: str = Query(None)):
+    rows = db.get_all_rows("categories")
+    target = next(
+        (r for r in rows if r["name"] == name and (type is None or r["type"] == type)),
+        None
+    )
+    if not target:
+        raise HTTPException(status_code=404, detail="카테고리를 찾을 수 없습니다.")
+    db.get_client().table("categories").delete().eq("id", target["id"]).execute()
