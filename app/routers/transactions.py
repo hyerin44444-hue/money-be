@@ -17,13 +17,16 @@ def list_transactions(
     type: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
 ):
-    rows = db.get_all_rows("transactions")
+    # 서버 사이드 날짜 필터링
+    if year and month:
+        rows = db.get_transactions_by_month(year, month)
+    elif year:
+        rows = db.get_transactions_by_year(year)
+    else:
+        rows = db.get_all_rows("transactions")
+
     result = [Transaction(**r) for r in rows]
 
-    if year:
-        result = [t for t in result if t.date.startswith(str(year))]
-    if month:
-        result = [t for t in result if f"-{month:02d}-" in t.date]
     if type:
         result = [t for t in result if t.type == type]
     if category:

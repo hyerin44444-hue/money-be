@@ -7,13 +7,10 @@ router = APIRouter(prefix="/summary", tags=["summary"])
 
 @router.get("", response_model=Summary)
 def get_summary(year: int = Query(...), month: int = Query(...)):
-    rows = db.get_all_rows("transactions")
-    month_prefix = f"{year}-{month:02d}-"
+    rows = db.get_transactions_by_month(year, month)
 
     income = expense = 0.0
     for row in rows:
-        if not row.get("date", "").startswith(month_prefix):
-            continue
         amount = float(row.get("amount", 0))
         if row.get("type") == "income":
             income += amount
@@ -25,14 +22,11 @@ def get_summary(year: int = Query(...), month: int = Query(...)):
 
 @router.get("/monthly")
 def get_monthly_summary(year: int = Query(...)):
-    rows = db.get_all_rows("transactions")
-    year_prefix = f"{year}-"
+    rows = db.get_transactions_by_year(year)
 
     monthly: dict[int, dict] = {m: {"income": 0.0, "expense": 0.0} for m in range(1, 13)}
     for row in rows:
         date = row.get("date", "")
-        if not date.startswith(year_prefix):
-            continue
         try:
             m = int(date[5:7])
         except (ValueError, IndexError):

@@ -54,7 +54,7 @@ def apply_fixed_expenses(year: int, month: int):
     if not fixed:
         return []
 
-    existing = db.get_all_rows("transactions")
+    existing = db.get_transactions_by_month(year, month)
     month_prefix = f"{year}-{month:02d}-"
 
     added = []

@@ -1,10 +1,19 @@
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import transactions, summary, categories, fixed_expenses, savings, budgets
+from app.services.db import warmup
 
-app = FastAPI(title="가계부 API", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app):
+    warmup()
+    yield
+
+
+app = FastAPI(title="가계부 API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
