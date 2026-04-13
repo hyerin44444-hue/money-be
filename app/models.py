@@ -34,6 +34,7 @@ class Summary(BaseModel):
 class CategoryItem(BaseModel):
     name: str
     type: str  # "income" | "expense" | "both"
+    sort_order: Optional[int] = 0
 
 
 class SavingsRecordCreate(BaseModel):
