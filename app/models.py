@@ -62,3 +62,17 @@ class FixedExpenseCreate(BaseModel):
 
 class FixedExpense(FixedExpenseCreate):
     id: str
+
+
+class EventCreate(BaseModel):
+    person_name: str                 # 사람 이름
+    category: str                    # 경조사 카테고리 (결혼식, 돌잔치, 장례식 등)
+    received_amount: float = 0       # 내가 받은 금액
+    given_amount: float = 0          # 내가 준 금액
+    received_date: Optional[str] = ""  # 받은 날짜 (YYYY-MM-DD)
+    given_date: Optional[str] = ""     # 준 날짜 (YYYY-MM-DD)
+    note: Optional[str] = ""
+
+
+class Event(EventCreate):
+    id: str
