@@ -32,7 +32,7 @@ app.include_router(budgets.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
 
 
-@app.get("/health")
-@app.get("/api/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
+@app.api_route("/api/health", methods=["GET", "HEAD"])
 def health():
     return {"status": "ok"}
