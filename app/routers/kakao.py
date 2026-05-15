@@ -225,6 +225,13 @@ def get_monthly_summary_text(mode: str) -> str:
 def kakao_webhook(req: KakaoRequest):
     text = req.userRequest.utterance.strip()
 
+    if text in ("시작", "안녕", "처음"):
+        return kakao_text(
+            "👋 안녕하세요! 가계부 챗봇입니다.\n\n"
+            "지출/수입을 바로 입력하거나\n"
+            "아래 버튼으로 이번달 현황을 확인하세요!"
+        )
+
     if text in ("도움말", "help", "?", "ㅎ"):
         return kakao_text(HELP_TEXT)
 
