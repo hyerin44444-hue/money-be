@@ -230,25 +230,30 @@ def get_compare_text() -> str:
     cur_inc  = sum(float(t["amount"]) for t in cur_txs  if t["type"] == "income")
     prev_inc = sum(float(t["amount"]) for t in prev_txs if t["type"] == "income")
 
+    savings_rows = db.get_all_rows("savings")
+    cur_sav  = sum(float(r["amount"]) for r in savings_rows if r["date"].startswith(f"{y}-{m:02d}"))
+    prev_sav = sum(float(r["amount"]) for r in savings_rows if r["date"].startswith(f"{prev_y}-{prev_m:02d}"))
+
     def diff(cur, prev):
         d = cur - prev
-        if d > 0:   return f"▲ {abs(d):,.0f}원 증가"
-        if d < 0:   return f"▼ {abs(d):,.0f}원 감소"
+        if d > 0: return f"▲ {abs(d):,.0f}원 증가"
+        if d < 0: return f"▼ {abs(d):,.0f}원 감소"
         return "변동 없음"
-
-    exp_arrow = "🔴" if cur_exp > prev_exp else "🟢"
-    inc_arrow = "🟢" if cur_inc >= prev_inc else "🔴"
 
     return (
         f"📈 {prev_m}월 → {m}월 비교\n\n"
-        f"💸 지출\n"
-        f"  {prev_m}월: {prev_exp:,.0f}원\n"
-        f"  {m}월: {cur_exp:,.0f}원\n"
-        f"  {exp_arrow} {diff(cur_exp, prev_exp)}\n\n"
         f"💵 수입\n"
         f"  {prev_m}월: {prev_inc:,.0f}원\n"
         f"  {m}월: {cur_inc:,.0f}원\n"
-        f"  {inc_arrow} {diff(cur_inc, prev_inc)}"
+        f"  {'🟢' if cur_inc >= prev_inc else '🔴'} {diff(cur_inc, prev_inc)}\n\n"
+        f"💸 지출\n"
+        f"  {prev_m}월: {prev_exp:,.0f}원\n"
+        f"  {m}월: {cur_exp:,.0f}원\n"
+        f"  {'🟢' if cur_exp <= prev_exp else '🔴'} {diff(cur_exp, prev_exp)}\n\n"
+        f"🏦 저금\n"
+        f"  {prev_m}월: {prev_sav:,.0f}원\n"
+        f"  {m}월: {cur_sav:,.0f}원\n"
+        f"  {'🟢' if cur_sav >= prev_sav else '🔴'} {diff(cur_sav, prev_sav)}"
     )
 
 
