@@ -36,8 +36,8 @@ class KakaoRequest(_Base):
 QUICK_REPLIES = [
     {"action": "message", "label": "📊 이번달 요약", "messageText": "이번달 요약"},
     {"action": "message", "label": "💸 이번달 지출", "messageText": "이번달 지출"},
-    {"action": "message", "label": "💰 이번달 수입", "messageText": "이번달 수입"},
-    {"action": "message", "label": "🏦 이번달 저금", "messageText": "이번달 저금"},
+    {"action": "message", "label": "📈 지난달 비교", "messageText": "지난달"},
+    {"action": "message", "label": "↩️ 취소",        "messageText": "취소"},
 ]
 
 
