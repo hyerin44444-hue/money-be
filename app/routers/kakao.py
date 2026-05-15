@@ -41,10 +41,23 @@ QUICK_REPLIES = [
 ]
 
 
+HOME_URL = "https://money-fe.vercel.app/"
+
 def kakao_text(text: str, quick_replies: bool = True) -> dict:
     res = {
         "version": "2.0",
-        "template": {"outputs": [{"simpleText": {"text": text}}]},
+        "template": {
+            "outputs": [{
+                "basicCard": {
+                    "description": text,
+                    "buttons": [{
+                        "action": "webLink",
+                        "label": "🏠 가계부 열기",
+                        "webLinkUrl": HOME_URL,
+                    }]
+                }
+            }]
+        },
     }
     if quick_replies:
         res["template"]["quickReplies"] = QUICK_REPLIES
