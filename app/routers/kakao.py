@@ -55,8 +55,8 @@ def kakao_text(text: str, with_cancel: bool = False) -> dict:
         "version": "2.0",
         "template": {
             "outputs": [{
-                "basicCard": {
-                    "description": text,
+                "textCard": {
+                    "text": text,
                     "buttons": [{
                         "action": "webLink",
                         "label": "🏠 가계부 열기",
