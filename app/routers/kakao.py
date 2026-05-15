@@ -37,14 +37,21 @@ QUICK_REPLIES = [
     {"action": "message", "label": "📊 이번달 요약", "messageText": "이번달 요약"},
     {"action": "message", "label": "💸 이번달 지출", "messageText": "이번달 지출"},
     {"action": "message", "label": "📈 지난달 비교", "messageText": "지난달"},
+]
+
+QUICK_REPLIES_WITH_CANCEL = [
+    {"action": "message", "label": "📊 이번달 요약", "messageText": "이번달 요약"},
+    {"action": "message", "label": "💸 이번달 지출", "messageText": "이번달 지출"},
+    {"action": "message", "label": "📈 지난달 비교", "messageText": "지난달"},
     {"action": "message", "label": "↩️ 취소",        "messageText": "취소"},
 ]
 
 
 HOME_URL = "https://money-fe.vercel.app/"
 
-def kakao_text(text: str, quick_replies: bool = True) -> dict:
-    res = {
+def kakao_text(text: str, with_cancel: bool = False) -> dict:
+    replies = QUICK_REPLIES_WITH_CANCEL if with_cancel else QUICK_REPLIES
+    return {
         "version": "2.0",
         "template": {
             "outputs": [{
@@ -56,12 +63,10 @@ def kakao_text(text: str, quick_replies: bool = True) -> dict:
                         "webLinkUrl": HOME_URL,
                     }]
                 }
-            }]
+            }],
+            "quickReplies": replies,
         },
     }
-    if quick_replies:
-        res["template"]["quickReplies"] = QUICK_REPLIES
-    return res
 
 
 # ── 카테고리 별칭 ────────────────────────────────────────────────────────
@@ -379,4 +384,4 @@ def kakao_webhook(req: KakaoRequest):
         if warning:
             msg += f"\n\n{warning}"
 
-    return kakao_text(msg)
+    return kakao_text(msg, with_cancel=True)
