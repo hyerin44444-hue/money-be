@@ -12,17 +12,21 @@ router = APIRouter(prefix="/kakao", tags=["kakao"])
 # ── 카카오 요청/응답 스키마 ──────────────────────────────────────────────
 
 class KakaoAction(BaseModel):
+    model_config = {"extra": "ignore"}
     params: dict[str, Any] = {}
 
 class KakaoIntent(BaseModel):
+    model_config = {"extra": "ignore"}
     name: str = ""
 
 class KakaoUserRequest(BaseModel):
+    model_config = {"extra": "ignore"}
     utterance: str
     action: KakaoAction = KakaoAction()
     intent: KakaoIntent = KakaoIntent()
 
 class KakaoRequest(BaseModel):
+    model_config = {"extra": "ignore"}
     userRequest: KakaoUserRequest
     action: KakaoAction = KakaoAction()
 
