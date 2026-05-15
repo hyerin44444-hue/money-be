@@ -26,11 +26,22 @@ class KakaoRequest(_Base):
     action: KakaoAction = KakaoAction()
 
 
-def kakao_text(text: str) -> dict:
-    return {
+QUICK_REPLIES = [
+    {"action": "message", "label": "📊 이번달 요약", "messageText": "이번달 요약"},
+    {"action": "message", "label": "💸 이번달 지출", "messageText": "이번달 지출"},
+    {"action": "message", "label": "💰 이번달 수입", "messageText": "이번달 수입"},
+    {"action": "message", "label": "🏦 이번달 저금", "messageText": "이번달 저금"},
+]
+
+
+def kakao_text(text: str, quick_replies: bool = True) -> dict:
+    res = {
         "version": "2.0",
         "template": {"outputs": [{"simpleText": {"text": text}}]},
     }
+    if quick_replies:
+        res["template"]["quickReplies"] = QUICK_REPLIES
+    return res
 
 
 # ── 카테고리 별칭 ────────────────────────────────────────────────────────
@@ -156,12 +167,75 @@ HELP_TEXT = (
 )
 
 
+def get_monthly_summary_text(mode: str) -> str:
+    now = datetime.now()
+    year, month = now.year, now.month
+
+    txs = db.get_transactions_by_month(year, month)
+    income  = sum(float(t["amount"]) for t in txs if t["type"] == "income")
+    expense = sum(float(t["amount"]) for t in txs if t["type"] == "expense")
+
+    savings_rows = db.get_all_rows("savings")
+    savings = sum(
+        float(r["amount"]) for r in savings_rows
+        if r["date"].startswith(f"{year}-{month:02d}")
+    )
+
+    balance = income - expense - savings
+    label = f"{month}월"
+
+    if mode == "summary":
+        return (
+            f"📊 {label} 요약\n\n"
+            f"💵 수입   {income:>12,.0f}원\n"
+            f"💸 지출   {expense:>12,.0f}원\n"
+            f"🏦 저금   {savings:>12,.0f}원\n"
+            f"──────────────\n"
+            f"💡 잔액   {balance:>12,.0f}원"
+        )
+    if mode == "expense":
+        by_cat = {}
+        for t in txs:
+            if t["type"] == "expense":
+                by_cat[t["category"]] = by_cat.get(t["category"], 0) + float(t["amount"])
+        lines = "\n".join(
+            f"  {cat}: {amt:,.0f}원"
+            for cat, amt in sorted(by_cat.items(), key=lambda x: -x[1])
+        ) or "  내역 없음"
+        return f"💸 {label} 지출  {expense:,.0f}원\n\n{lines}"
+
+    if mode == "income":
+        by_cat = {}
+        for t in txs:
+            if t["type"] == "income":
+                by_cat[t["category"]] = by_cat.get(t["category"], 0) + float(t["amount"])
+        lines = "\n".join(
+            f"  {cat}: {amt:,.0f}원"
+            for cat, amt in sorted(by_cat.items(), key=lambda x: -x[1])
+        ) or "  내역 없음"
+        return f"💵 {label} 수입  {income:,.0f}원\n\n{lines}"
+
+    if mode == "savings":
+        return f"🏦 {label} 저금  {savings:,.0f}원"
+
+    return ""
+
+
 @router.post("")
 def kakao_webhook(req: KakaoRequest):
     text = req.userRequest.utterance.strip()
 
     if text in ("도움말", "help", "?", "ㅎ"):
         return kakao_text(HELP_TEXT)
+
+    if text in ("이번달 요약", "요약"):
+        return kakao_text(get_monthly_summary_text("summary"))
+    if text in ("이번달 지출", "지출"):
+        return kakao_text(get_monthly_summary_text("expense"))
+    if text in ("이번달 수입", "수입확인"):
+        return kakao_text(get_monthly_summary_text("income"))
+    if text in ("이번달 저금", "저금"):
+        return kakao_text(get_monthly_summary_text("savings"))
 
     parsed = parse(text)
     if not parsed:
