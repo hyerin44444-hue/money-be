@@ -24,7 +24,23 @@ def is_korean(ticker: str) -> bool:
     return ticker.upper().endswith(".KS") or ticker.upper().endswith(".KQ")
 
 
-def fetch_price(ticker: str) -> Optional[float]:
+def fetch_korean_price(code: str) -> Optional[float]:
+    """네이버 금융 실시간 시세 (한국 주식)"""
+    try:
+        import requests
+        url = f"https://polling.finance.naver.com/api/realtime?query=SERVICE_ITEM:{code}"
+        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5)
+        data = res.json()
+        items = data["result"]["areas"][0]["datas"]
+        if items:
+            return float(items[0]["nv"])  # nv = 현재가
+        return None
+    except Exception:
+        return None
+
+
+def fetch_us_price(ticker: str) -> Optional[float]:
+    """yfinance 시세 (미국 주식)"""
     try:
         import yfinance as yf
         t = yf.Ticker(ticker)
@@ -37,6 +53,13 @@ def fetch_price(ticker: str) -> Optional[float]:
         return None
     except Exception:
         return None
+
+
+def fetch_price(ticker: str) -> Optional[float]:
+    if is_korean(ticker):
+        code = ticker.upper().replace(".KS", "").replace(".KQ", "")
+        return fetch_korean_price(code)
+    return fetch_us_price(ticker)
 
 
 _usd_krw_cache: dict = {"rate": None}
