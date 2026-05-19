@@ -124,9 +124,14 @@ def list_stocks():
 @router.post("", status_code=201)
 def create_stock(body: StockCreate):
     rows = db.get_all_rows("stocks")
-    existing = next((r for r in rows if r["ticker"].upper() == body.ticker.upper()), None)
+    existing = next((
+        r for r in rows
+        if r["ticker"].upper() == body.ticker.upper()
+        and r.get("owner", "") == body.owner
+        and r.get("account_type", "") == body.account_type
+    ), None)
     if existing:
-        raise HTTPException(status_code=409, detail="이미 등록된 티커입니다.")
+        raise HTTPException(status_code=409, detail="동일한 소유자/계좌에 이미 등록된 티커입니다.")
     stock = Stock(**body.model_dump(), id=str(uuid.uuid4()))
     db.insert_row("stocks", stock.model_dump())
     return stock
