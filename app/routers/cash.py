@@ -28,10 +28,11 @@ def list_cash():
 
 @router.post("", status_code=201)
 def create_cash(body: CashCreate):
+    data = body.model_dump()
+    data["date"] = data.get("date") or datetime.now().strftime("%Y-%m-%d")
     item = Cash(
-        **body.model_dump(),
+        **data,
         id=str(uuid.uuid4()),
-        date=body.date or datetime.now().strftime("%Y-%m-%d"),
         created_at=datetime.now().isoformat(),
     )
     db.insert_row("cash", item.model_dump())
