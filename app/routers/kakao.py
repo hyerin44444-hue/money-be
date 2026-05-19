@@ -174,9 +174,10 @@ def get_stock_summary_text() -> str:
     has_us = any(not is_korean(r["ticker"]) for r in rows)
     usd_krw = get_usd_krw() if has_us else 1.0
 
+    # 소유자 → 계좌종류 → 종목 그룹핑
+    grouped: dict = {}
     total_purchase = 0.0
     total_current  = 0.0
-    lines = []
 
     for r in rows:
         price = fetch_price(r["ticker"])
@@ -185,28 +186,46 @@ def get_stock_summary_text() -> str:
         fx    = 1.0 if is_korean(r["ticker"]) else usd_krw
 
         purchase = avg * fx * qty
-        current  = price * fx * qty if price else None
+        current  = price * fx * qty if price else 0.0
         rate     = ((price - avg) / avg * 100) if price else None
 
         total_purchase += purchase
-        if current:
-            total_current += current
+        total_current  += current
 
-        rate_str = f"{rate:+.1f}%" if rate is not None else "조회실패"
-        lines.append(f"  {r['name']} {rate_str}")
+        owner   = r.get("owner", "") or "미분류"
+        account = r.get("account_type", "") or "일반"
+
+        grouped.setdefault(owner, {}).setdefault(account, []).append({
+            "name": r["name"],
+            "purchase": purchase,
+            "current": current,
+            "rate": rate,
+        })
 
     total_profit = total_current - total_purchase
     rate_total   = (total_profit / total_purchase * 100) if total_purchase else 0
 
-    result = (
-        f"📉 주식 현황\n\n"
-        f"매입  {total_purchase:>12,.0f}원\n"
-        f"평가  {total_current:>12,.0f}원\n"
-        f"손익  {total_profit:>+12,.0f}원 ({rate_total:+.1f}%)\n"
-        f"──────────────\n"
-    )
-    result += "\n".join(lines)
-    return result
+    lines = [
+        "📉 주식 현황",
+        "",
+        f"매입  {total_purchase:,.0f}원",
+        f"평가  {total_current:,.0f}원",
+        f"손익  {total_profit:+,.0f}원 ({rate_total:+.1f}%)",
+    ]
+
+    for owner, accounts in grouped.items():
+        lines.append("──────────────")
+        lines.append(f"👤 {owner}")
+        for account, stocks in accounts.items():
+            ac_purchase = sum(s["purchase"] for s in stocks)
+            ac_current  = sum(s["current"]  for s in stocks)
+            ac_profit   = ac_current - ac_purchase
+            lines.append(f"  🏦 {account}  {ac_profit:+,.0f}원")
+            for s in stocks:
+                rate_str = f"{s['rate']:+.1f}%" if s["rate"] is not None else "-"
+                lines.append(f"    {s['name']} {rate_str}")
+
+    return "\n".join(lines)
 
 
 # ── 이번달 요약 ──────────────────────────────────────────────────────────
