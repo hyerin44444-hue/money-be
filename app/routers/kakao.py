@@ -37,6 +37,7 @@ QUICK_REPLIES = [
     {"action": "message", "label": "📊 이번달 요약", "messageText": "이번달 요약"},
     {"action": "message", "label": "💸 이번달 지출", "messageText": "이번달 지출"},
     {"action": "message", "label": "📈 지난달 비교", "messageText": "지난달"},
+    {"action": "message", "label": "📉 주식 현황",   "messageText": "주식"},
 ]
 
 QUICK_REPLIES_WITH_CANCEL = [
@@ -160,6 +161,52 @@ def parse(text: str):
         return tx_type, cat, amount, note, date
 
     return None
+
+
+# ── 주식 현황 ────────────────────────────────────────────────────────────
+
+def get_stock_summary_text() -> str:
+    from app.routers.stocks import fetch_price, is_korean, get_usd_krw
+    rows = db.get_all_rows("stocks")
+    if not rows:
+        return "📉 등록된 주식이 없습니다."
+
+    has_us = any(not is_korean(r["ticker"]) for r in rows)
+    usd_krw = get_usd_krw() if has_us else 1.0
+
+    total_purchase = 0.0
+    total_current  = 0.0
+    lines = []
+
+    for r in rows:
+        price = fetch_price(r["ticker"])
+        qty   = float(r["quantity"])
+        avg   = float(r["avg_price"])
+        fx    = 1.0 if is_korean(r["ticker"]) else usd_krw
+
+        purchase = avg * fx * qty
+        current  = price * fx * qty if price else None
+        rate     = ((price - avg) / avg * 100) if price else None
+
+        total_purchase += purchase
+        if current:
+            total_current += current
+
+        rate_str = f"{rate:+.1f}%" if rate is not None else "조회실패"
+        lines.append(f"  {r['name']} {rate_str}")
+
+    total_profit = total_current - total_purchase
+    rate_total   = (total_profit / total_purchase * 100) if total_purchase else 0
+
+    result = (
+        f"📉 주식 현황\n\n"
+        f"매입  {total_purchase:>12,.0f}원\n"
+        f"평가  {total_current:>12,.0f}원\n"
+        f"손익  {total_profit:>+12,.0f}원 ({rate_total:+.1f}%)\n"
+        f"──────────────\n"
+    )
+    result += "\n".join(lines)
+    return result
 
 
 # ── 이번달 요약 ──────────────────────────────────────────────────────────
@@ -323,6 +370,9 @@ def kakao_webhook(req: KakaoRequest):
         return kakao_text(get_monthly_summary_text("income"))
     if text in ("이번달 저금", "저금"):
         return kakao_text(get_monthly_summary_text("savings"))
+
+    if text in ("주식", "주식 현황"):
+        return kakao_text(get_stock_summary_text())
 
     # ── 지난달 비교 ──
     if text in ("지난달", "지난달 비교", "비교"):
