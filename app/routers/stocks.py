@@ -8,10 +8,12 @@ router = APIRouter(prefix="/stocks", tags=["stocks"])
 
 
 class StockCreate(BaseModel):
-    name: str        # 종목명 (예: 삼성전자)
-    ticker: str      # 티커 (예: 005930.KS / AAPL)
-    quantity: float  # 보유수량
-    avg_price: float # 평균매입가
+    name: str               # 종목명 (예: 삼성전자)
+    ticker: str             # 티커 (예: 005930.KS / AAPL)
+    quantity: float         # 보유수량
+    avg_price: float        # 평균매입가
+    owner: str = ""         # 소유자 (예: 박혜린)
+    account_type: str = ""  # 계좌종류 (예: 개인연금, ISA, 일반)
 
 
 class Stock(StockCreate):
@@ -52,6 +54,8 @@ def list_stocks():
             "ticker": r["ticker"],
             "quantity": quantity,
             "avg_price": avg_price,
+            "owner": r.get("owner", ""),
+            "account_type": r.get("account_type", ""),
             "current_price": price,
             "current_value": current_value,
             "purchase_value": purchase_value,
