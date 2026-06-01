@@ -76,3 +76,14 @@ class EventCreate(BaseModel):
 
 class Event(EventCreate):
     id: str
+
+
+class MemoCreate(BaseModel):
+    year: int
+    month: int
+    text: str
+    done: bool = False
+
+
+class Memo(MemoCreate):
+    id: str
