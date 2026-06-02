@@ -78,6 +78,18 @@ class Event(EventCreate):
     id: str
 
 
+class SavingsGoalCreate(BaseModel):
+    start_year: int
+    start_month: int
+    end_year: int
+    end_month: int
+    target: float
+
+
+class SavingsGoal(SavingsGoalCreate):
+    id: str
+
+
 class MemoCreate(BaseModel):
     year: int
     month: int
