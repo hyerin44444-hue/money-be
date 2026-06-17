@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from app.models import FixedExpense, FixedExpenseCreate, Transaction
 from app.services import db
@@ -48,9 +49,15 @@ def delete_fixed_expense(fe_id: str):
     db.delete_row("fixed_expenses", fe_id)
 
 
+class ApplyBody(BaseModel):
+    ids: list[str] = []
+
+
 @router.post("/apply", response_model=list[Transaction])
-def apply_fixed_expenses(year: int, month: int):
+def apply_fixed_expenses(year: int, month: int, body: ApplyBody = ApplyBody()):
     fixed = [_row_to_fe(r) for r in db.get_all_rows("fixed_expenses")]
+    if body.ids:
+        fixed = [f for f in fixed if f.id in body.ids]
     if not fixed:
         return []
 
