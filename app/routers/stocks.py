@@ -35,8 +35,11 @@ def fetch_korean_price(code: str) -> dict:
         if items:
             d = items[0]
             price = float(d["nv"])
-            day_change = float(d.get("cv", 0))      # 전일 대비 등락폭
-            day_change_rate = float(d.get("cr", 0)) # 등락률 %
+            # rf: "2"=상승, "5"=하락, "3"=보합 — cv/cr은 항상 양수로 옴
+            rf = d.get("rf", "3")
+            sign = -1 if rf == "5" else 1
+            day_change = sign * abs(float(d.get("cv", 0)))
+            day_change_rate = sign * abs(float(d.get("cr", 0)))
             return {"price": price, "day_change": day_change, "day_change_rate": day_change_rate}
     except Exception:
         pass
