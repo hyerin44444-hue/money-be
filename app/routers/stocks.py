@@ -24,7 +24,7 @@ def is_korean(ticker: str) -> bool:
     return ticker.upper().endswith(".KS") or ticker.upper().endswith(".KQ")
 
 
-def fetch_korean_price(code: str) -> Optional[float]:
+def fetch_korean_price(code: str) -> dict:
     """네이버 금융 실시간 시세 (한국 주식)"""
     try:
         import requests
@@ -33,29 +33,42 @@ def fetch_korean_price(code: str) -> Optional[float]:
         data = res.json()
         items = data["result"]["areas"][0]["datas"]
         if items:
-            return float(items[0]["nv"])  # nv = 현재가
-        return None
+            d = items[0]
+            price = float(d["nv"])
+            day_change = float(d.get("cv", 0))      # 전일 대비 등락폭
+            day_change_rate = float(d.get("cr", 0)) # 등락률 %
+            return {"price": price, "day_change": day_change, "day_change_rate": day_change_rate}
     except Exception:
-        return None
+        pass
+    return {"price": None, "day_change": None, "day_change_rate": None}
 
 
-def fetch_us_price(ticker: str) -> Optional[float]:
+def fetch_us_price(ticker: str) -> dict:
     """yfinance 시세 (미국 주식)"""
     try:
         import yfinance as yf
         t = yf.Ticker(ticker)
-        price = t.fast_info.get("last_price") or t.fast_info.get("lastPrice")
+        fi = t.fast_info
+        price = fi.get("last_price") or fi.get("lastPrice")
+        prev_close = fi.get("previous_close") or fi.get("previousClose")
         if price:
-            return float(price)
-        hist = t.history(period="1d")
-        if not hist.empty:
-            return float(hist["Close"].iloc[-1])
-        return None
+            price = float(price)
+            day_change = round(price - float(prev_close), 4) if prev_close else None
+            day_change_rate = round((price - float(prev_close)) / float(prev_close) * 100, 2) if prev_close else None
+            return {"price": price, "day_change": day_change, "day_change_rate": day_change_rate}
+        hist = t.history(period="2d")
+        if len(hist) >= 2:
+            price = float(hist["Close"].iloc[-1])
+            prev = float(hist["Close"].iloc[-2])
+            return {"price": price, "day_change": round(price - prev, 4), "day_change_rate": round((price - prev) / prev * 100, 2)}
+        if len(hist) == 1:
+            return {"price": float(hist["Close"].iloc[-1]), "day_change": None, "day_change_rate": None}
     except Exception:
-        return None
+        pass
+    return {"price": None, "day_change": None, "day_change_rate": None}
 
 
-def fetch_price(ticker: str) -> Optional[float]:
+def fetch_price(ticker: str) -> dict:
     if is_korean(ticker):
         code = ticker.upper().replace(".KS", "").replace(".KQ", "")
         return fetch_korean_price(code)
@@ -88,11 +101,15 @@ def list_stocks():
 
     result = []
     for r in rows:
-        price = fetch_price(r["ticker"])
+        pdata = fetch_price(r["ticker"])
+        price = pdata["price"]
+        day_change = pdata["day_change"]
+        day_change_rate = pdata["day_change_rate"]
+
         quantity = float(r["quantity"])
         avg_price = float(r["avg_price"])
         korean = is_korean(r["ticker"])
-        fx = 1.0 if korean else usd_krw  # 원화 환산 배율
+        fx = 1.0 if korean else usd_krw
 
         current_price_krw  = price * fx if price else None
         avg_price_krw      = avg_price * fx
@@ -100,6 +117,7 @@ def list_stocks():
         purchase_value     = avg_price_krw * quantity
         profit             = (current_value - purchase_value) if current_value is not None else None
         profit_rate        = ((price - avg_price) / avg_price * 100) if price else None
+        day_change_krw     = day_change * fx if day_change is not None else None
 
         result.append({
             "id": r["id"],
@@ -117,6 +135,9 @@ def list_stocks():
             "purchase_value": purchase_value,
             "profit": profit,
             "profit_rate": round(profit_rate, 2) if profit_rate is not None else None,
+            "day_change": day_change,
+            "day_change_krw": round(day_change_krw) if day_change_krw is not None else None,
+            "day_change_rate": day_change_rate,
         })
     return result
 
