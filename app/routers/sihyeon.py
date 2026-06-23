@@ -5,7 +5,6 @@ from typing import Optional
 from app.services import db
 from app.models import SavingsRecord, SavingsRecordCreate, SavingsSummary, GoldHolding, GoldHoldingCreate
 from app.routers.stocks import fetch_price, is_korean, get_usd_krw
-from app.routers.cash import CashCreate, Cash
 
 router = APIRouter(prefix="/sihyeon", tags=["sihyeon"])
 
@@ -17,6 +16,15 @@ class SihyeonStockCreate(BaseModel):
     quantity: float
     avg_price: float
     account_type: str = ""
+
+class SihyeonCashCreate(BaseModel):
+    category: str
+    amount: float
+    note: Optional[str] = ""
+    date: Optional[str] = None
+
+class SihyeonCash(SihyeonCashCreate):
+    id: str
 
 class SihyeonStock(SihyeonStockCreate):
     id: str
@@ -118,22 +126,22 @@ def delete_stock(stock_id: str):
 
 # ── 현금 ────────────────────────────────────────────────
 
-@router.get("/cash", response_model=list[Cash])
+@router.get("/cash")
 def list_cash():
-    return [Cash(**r) for r in db.get_all_rows("sihyeon_cash")]
+    return db.get_all_rows("sihyeon_cash")
 
-@router.post("/cash", response_model=Cash, status_code=201)
-def create_cash(body: CashCreate):
-    item = Cash(**body.model_dump(), id=str(uuid.uuid4()))
+@router.post("/cash", response_model=SihyeonCash, status_code=201)
+def create_cash(body: SihyeonCashCreate):
+    item = SihyeonCash(**body.model_dump(), id=str(uuid.uuid4()))
     db.insert_row("sihyeon_cash", item.model_dump())
     return item
 
-@router.put("/cash/{item_id}", response_model=Cash)
-def update_cash(item_id: str, body: CashCreate):
+@router.put("/cash/{item_id}", status_code=200)
+def update_cash(item_id: str, body: SihyeonCashCreate):
     if not db.get_rows_where("sihyeon_cash", id=item_id):
         raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다.")
     db.update_row("sihyeon_cash", item_id, body.model_dump())
-    return Cash(**body.model_dump(), id=item_id)
+    return {"ok": True}
 
 @router.delete("/cash/{item_id}", status_code=204)
 def delete_cash(item_id: str):
