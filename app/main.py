@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import transactions, summary, categories, fixed_expenses, savings, budgets, events, kakao, stocks, cash, memos, savings_goals
+from app.routers import transactions, summary, categories, fixed_expenses, savings, budgets, events, kakao, stocks, cash, memos, savings_goals, gold
 from app.services.db import warmup
 
 
@@ -35,6 +35,7 @@ app.include_router(stocks.router, prefix="/api")
 app.include_router(cash.router, prefix="/api")
 app.include_router(memos.router, prefix="/api")
 app.include_router(savings_goals.router, prefix="/api")
+app.include_router(gold.router, prefix="/api")
 
 
 @app.api_route("/health", methods=["GET", "HEAD"])

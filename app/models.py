@@ -90,6 +90,17 @@ class SavingsGoal(SavingsGoalCreate):
     id: str
 
 
+class GoldHoldingCreate(BaseModel):
+    grams: float
+    buy_price_per_gram: float
+    note: str = ''
+    date: str
+
+
+class GoldHolding(GoldHoldingCreate):
+    id: str
+
+
 class MemoCreate(BaseModel):
     year: int
     month: int
