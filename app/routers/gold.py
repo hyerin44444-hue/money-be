@@ -27,15 +27,26 @@ def fetch_gold_price_krw() -> dict | None:
         # USD/KRW
         usd_krw = yf.Ticker("USDKRW=X").fast_info.get("last_price") or 1380.0
 
+        # 전일 종가
+        prev_close = gc.fast_info.get("previous_close") or gc.fast_info.get("previousClose")
+        if not prev_close:
+            hist = gc.history(period="5d")
+            prev_close = float(hist["Close"].iloc[-2]) if len(hist) >= 2 else gold_usd
+
         # 그램당 기준가 (1 troy oz = 31.1035g)
         base_per_gram = float(gold_usd) * float(usd_krw) / 31.1035
+        prev_per_gram = float(prev_close) * float(usd_krw) / 31.1035
+        day_change_per_gram = base_per_gram - prev_per_gram
+        day_change_rate = (day_change_per_gram / prev_per_gram) * 100 if prev_per_gram else 0
 
         return {
             "base_per_gram": round(base_per_gram),
-            "buy_per_gram":  round(base_per_gram * 1.05),   # 살때 (+5% 스프레드+세금)
-            "sell_per_gram": round(base_per_gram * 0.97),   # 팔때 (-3% 스프레드)
+            "buy_per_gram":  round(base_per_gram * 1.05),
+            "sell_per_gram": round(base_per_gram * 0.97),
             "gold_usd_oz":   round(float(gold_usd), 2),
             "usd_krw":       round(float(usd_krw)),
+            "day_change_per_gram": round(day_change_per_gram),
+            "day_change_rate":     round(day_change_rate, 2),
         }
     except Exception:
         return None
