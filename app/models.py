@@ -51,6 +51,7 @@ class SavingsRecord(SavingsRecordCreate):
 class SavingsSummary(BaseModel):
     name: str
     total: float
+    non_stock_total: float
     records: list[SavingsRecord]
 
 

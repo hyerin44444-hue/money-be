@@ -16,7 +16,12 @@ def list_savings():
         groups.setdefault(r.name, []).append(r)
 
     return [
-        SavingsSummary(name=name, total=sum(r.amount for r in recs), records=recs)
+        SavingsSummary(
+            name=name,
+            total=sum(r.amount for r in recs),
+            non_stock_total=sum(r.amount for r in recs if not r.is_stock),
+            records=recs,
+        )
         for name, recs in groups.items()
     ]
 
