@@ -41,6 +41,7 @@ class SavingsRecordCreate(BaseModel):
     name: str       # 적금 이름 (예: 청년적금)
     amount: float
     date: str       # YYYY-MM-DD
+    is_stock: bool = False  # 주식 투자 재원 여부 (자산 합산 제외)
 
 
 class SavingsRecord(SavingsRecordCreate):
