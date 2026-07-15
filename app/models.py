@@ -8,6 +8,7 @@ class TransactionCreate(BaseModel):
     category: str
     amount: float
     note: Optional[str] = ""
+    is_irregular: bool = False
 
 
 class TransactionUpdate(BaseModel):
@@ -16,6 +17,7 @@ class TransactionUpdate(BaseModel):
     category: Optional[str] = None
     amount: Optional[float] = None
     note: Optional[str] = None
+    is_irregular: Optional[bool] = None
 
 
 class Transaction(TransactionCreate):
