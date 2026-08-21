@@ -70,6 +70,32 @@ def delete_category(name: str, type: str = Query(None)):
     db.get_client().table("categories").delete().eq("id", target["id"]).execute()
 
 
+class UpdateCategoryRequest(BaseModel):
+    new_name: str
+    type: str
+
+
+@router.put("/{name}", response_model=CategoryItem, status_code=200)
+def update_category(name: str, body: UpdateCategoryRequest):
+    rows = db.get_all_rows("categories")
+    target = next((r for r in rows if r["name"] == name and r["type"] == body.type), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="카테고리를 찾을 수 없습니다.")
+    if any(r["name"] == body.new_name and r["type"] == body.type and r["id"] != target["id"] for r in rows):
+        raise HTTPException(status_code=409, detail="이미 존재하는 카테고리입니다.")
+    db.update_row("categories", target["id"], {"name": body.new_name})
+    # 하위 카테고리의 parent도 업데이트
+    for r in rows:
+        if r.get("parent") == name and r["type"] == body.type:
+            db.update_row("categories", r["id"], {"parent": body.new_name})
+    return CategoryItem(
+        name=body.new_name,
+        type=body.type,
+        sort_order=target.get("sort_order", 0) or 0,
+        parent=target.get("parent") or None,
+    )
+
+
 class ReorderRequest(BaseModel):
     categories: list[dict]  # [{"name": "식비", "type": "expense", "sort_order": 0}, ...]
 
