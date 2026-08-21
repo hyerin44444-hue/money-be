@@ -27,6 +27,7 @@ def _parse_category(row: dict) -> CategoryItem:
         name=row["name"],
         type=row["type"],
         sort_order=row.get("sort_order", 0) or 0,
+        parent=row.get("parent") or None,
     )
 
 
@@ -51,6 +52,8 @@ def create_category(body: CategoryItem):
     same_type = [r for r in rows if r["type"] == body.type]
     max_order = max((r.get("sort_order", 0) or 0 for r in same_type), default=-1)
     data = {"name": body.name, "type": body.type, "sort_order": max_order + 1}
+    if body.parent:
+        data["parent"] = body.parent
     db.insert_row("categories", data)
     return CategoryItem(**data)
 
