@@ -1,4 +1,5 @@
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -94,43 +95,55 @@ def get_usd_krw() -> float:
 
 @router.get("")
 def list_stocks():
+    """기본 데이터만 즉시 반환 (가격 없음)"""
+    rows = db.get_all_rows("stocks")
+    if not rows:
+        return []
+    return [
+        {
+            "id": r["id"],
+            "name": r["name"],
+            "ticker": r["ticker"],
+            "quantity": float(r["quantity"]),
+            "avg_price": float(r["avg_price"]),
+            "owner": r.get("owner", ""),
+            "account_type": r.get("account_type", ""),
+            "currency": "KRW" if is_korean(r["ticker"]) else "USD",
+            "purchase_value": float(r["quantity"]) * float(r["avg_price"]),
+        }
+        for r in rows
+    ]
+
+
+@router.get("/prices")
+def get_stock_prices():
+    """현재가 + 환율 병렬 조회"""
     rows = db.get_all_rows("stocks")
     if not rows:
         return []
 
-    # 미국 주식이 하나라도 있으면 환율 조회
     has_us = any(not is_korean(r["ticker"]) for r in rows)
     usd_krw = get_usd_krw() if has_us else 1.0
 
-    result = []
-    for r in rows:
+    def enrich(r):
         pdata = fetch_price(r["ticker"])
         price = pdata["price"]
         day_change = pdata["day_change"]
         day_change_rate = pdata["day_change_rate"]
-
         quantity = float(r["quantity"])
         avg_price = float(r["avg_price"])
         korean = is_korean(r["ticker"])
         fx = 1.0 if korean else usd_krw
-
-        current_price_krw  = price * fx if price else None
-        avg_price_krw      = avg_price * fx
-        current_value      = current_price_krw * quantity if current_price_krw else None
-        purchase_value     = avg_price_krw * quantity
-        profit             = (current_value - purchase_value) if current_value is not None else None
-        profit_rate        = ((price - avg_price) / avg_price * 100) if price else None
-        day_change_krw     = day_change * fx if day_change is not None else None
-
-        result.append({
+        current_price_krw = price * fx if price else None
+        avg_price_krw = avg_price * fx
+        current_value = current_price_krw * quantity if current_price_krw else None
+        purchase_value = avg_price_krw * quantity
+        profit = (current_value - purchase_value) if current_value is not None else None
+        profit_rate = ((price - avg_price) / avg_price * 100) if price else None
+        day_change_krw = day_change * fx if day_change is not None else None
+        return {
             "id": r["id"],
-            "name": r["name"],
             "ticker": r["ticker"],
-            "quantity": quantity,
-            "avg_price": avg_price,
-            "owner": r.get("owner", ""),
-            "account_type": r.get("account_type", ""),
-            "currency": "KRW" if korean else "USD",
             "usd_krw": round(usd_krw) if not korean else None,
             "current_price": price,
             "current_price_krw": current_price_krw,
@@ -141,8 +154,11 @@ def list_stocks():
             "day_change": day_change,
             "day_change_krw": round(day_change_krw) if day_change_krw is not None else None,
             "day_change_rate": day_change_rate,
-        })
-    return result
+        }
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(enrich, r): r for r in rows}
+        return [f.result() for f in as_completed(futures)]
 
 
 @router.post("", status_code=201)
