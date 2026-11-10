@@ -16,19 +16,40 @@ def _row_to_fe(row: dict) -> FixedExpense:
         amount=float(row["amount"]),
         category=row["category"],
         day=int(row["day"]),
+        group_name=row.get("group_name") or "",
+        sort_order=row.get("sort_order") or 0,
+    )
+
+
+def _sorted_fixed() -> list[FixedExpense]:
+    return sorted(
+        (_row_to_fe(r) for r in db.get_all_rows("fixed_expenses")),
+        key=lambda f: f.sort_order,
     )
 
 
 @router.get("", response_model=list[FixedExpense])
 def list_fixed_expenses():
-    return [_row_to_fe(r) for r in db.get_all_rows("fixed_expenses")]
+    return _sorted_fixed()
 
 
 @router.post("", response_model=FixedExpense, status_code=201)
 def create_fixed_expense(body: FixedExpenseCreate):
-    fe = FixedExpense(**body.model_dump(), id=str(uuid.uuid4()))
+    max_order = max((f.sort_order for f in _sorted_fixed()), default=-1)
+    fe = FixedExpense(**body.model_dump(), id=str(uuid.uuid4()), sort_order=max_order + 1)
     db.insert_row("fixed_expenses", fe.model_dump())
     return fe
+
+
+class ReorderBody(BaseModel):
+    ids: list[str]  # 원하는 순서대로 나열한 고정비 id 목록
+
+
+@router.put("/reorder", status_code=200)
+def reorder_fixed_expenses(body: ReorderBody):
+    for i, fe_id in enumerate(body.ids):
+        db.update_row("fixed_expenses", fe_id, {"sort_order": i})
+    return {"ok": True}
 
 
 @router.put("/{fe_id}", response_model=FixedExpense)
@@ -36,7 +57,7 @@ def update_fixed_expense(fe_id: str, body: FixedExpenseCreate):
     rows = db.get_rows_where("fixed_expenses", id=fe_id)
     if not rows:
         raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다.")
-    fe = FixedExpense(**body.model_dump(), id=fe_id)
+    fe = FixedExpense(**body.model_dump(), id=fe_id, sort_order=_row_to_fe(rows[0]).sort_order)
     db.update_row("fixed_expenses", fe_id, fe.model_dump())
     return fe
 
@@ -55,7 +76,7 @@ class ApplyBody(BaseModel):
 
 @router.post("/apply", response_model=list[Transaction])
 def apply_fixed_expenses(year: int, month: int, body: ApplyBody = ApplyBody()):
-    fixed = [_row_to_fe(r) for r in db.get_all_rows("fixed_expenses")]
+    fixed = _sorted_fixed()
     if body.ids:
         fixed = [f for f in fixed if f.id in body.ids]
     if not fixed:

@@ -63,10 +63,12 @@ class FixedExpenseCreate(BaseModel):
     amount: float
     category: str
     day: int = 1     # 매월 몇 일
+    group_name: str = ""  # 고정비 목록에서 묶어 보여줄 그룹명 (직접 입력)
 
 
 class FixedExpense(FixedExpenseCreate):
     id: str
+    sort_order: int = 0
 
 
 class EventCreate(BaseModel):
