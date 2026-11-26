@@ -9,6 +9,7 @@ class TransactionCreate(BaseModel):
     amount: float
     note: Optional[str] = ""
     is_irregular: bool = False
+    from_emergency: bool = False  # 비상금에서 쓴 지출 (비상금 잔액에서 자동 차감)
 
 
 class TransactionUpdate(BaseModel):
@@ -18,6 +19,7 @@ class TransactionUpdate(BaseModel):
     amount: Optional[float] = None
     note: Optional[str] = None
     is_irregular: Optional[bool] = None
+    from_emergency: Optional[bool] = None
 
 
 class Transaction(TransactionCreate):
